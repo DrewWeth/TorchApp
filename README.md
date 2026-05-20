@@ -94,7 +94,7 @@ curl -X POST http://127.0.0.1:8000/events \
 
 **Layering.** `normalize.py` and `relationships.py` are pure functions. The routers are thin: parse → call repo + service → return. `repository.py` defines a `Protocol`, so the I/O layer is one swap away from SQLite or Postgres. This is also the seam a Kafka/NiFi consumer would plug into.
 
-**Storage.** Ships with `InMemoryRepository`. Process-local, so it does not survive restarts and is not safe across multiple uvicorn workers. The production swap is a `SqliteRepository` or `PostgresRepository` that implements the same `EventRepository` protocol; the rest of the code does not change.
+**Storage.** Two implementations of `EventRepository` ship: `InMemoryRepository` (default; process-local, ephemeral, fast) and `SqliteRepository` (file- or in-memory-backed, durable). Set `TORCH_EVENTS_DB=/path/to/events.db` to use SQLite — anything else (unset/empty) keeps in-memory. Use `:memory:` for an isolated SQLite instance. The test suite runs every API + relationship test against both impls via a parameterized fixture, which is how we prove the swap is real. A Postgres impl would slot in the same way.
 
 **Normalization.** Validates with Pydantic (rejects naive timestamps and out-of-range confidence), strips whitespace on `related_entities`, stores both `entity` (preserved) and `normalized_entity` (stripped + lowercased) so queries are case-insensitive without rewriting source data. Stamps `ingested_at` at processing time.
 
@@ -102,7 +102,7 @@ curl -X POST http://127.0.0.1:8000/events \
 
 **Relationships.** The endpoint splits the answer into three parts so the analyst sees structure: events where the entity is primary, events where they were mentioned by someone else, and co-occurring entities. The `temporal_neighbors` block adds events near in time (default ±30 min) with a `same_location` flag.
 
-**Concurrency.** `POST /events` does a read-modify-write. `InMemoryRepository` serialises writes with an `asyncio.Lock`. A SQL implementation would push the check into `INSERT ... ON CONFLICT`.
+**Concurrency.** `POST /events` does a read-modify-write. `InMemoryRepository` serialises writes with an `asyncio.Lock`. `SqliteRepository` pushes the check down to the `events.id` primary key — `INSERT` fails on conflict and the repo translates `IntegrityError` to `EventExists`. A multi-statement `add` (event row + related-entity rows) is still wrapped by an `asyncio.Lock` so the two-table write commits atomically without interleaving.
 
 ## Assumptions
 
@@ -122,11 +122,11 @@ curl -X POST http://127.0.0.1:8000/events \
 
 ## What I would build next
 
-1. SQLite implementation of `EventRepository` (proof the swap works).
-2. Cursor pagination on `/events`.
-3. Request-ID logging middleware.
-4. Property-based tests on `normalize` with Hypothesis.
-5. A Kafka consumer worker reusing `normalize()` and `repo.add()`.
+1. Cursor pagination on `/events`.
+2. Request-ID logging middleware.
+3. Property-based tests on `normalize` with Hypothesis.
+4. A Kafka consumer worker reusing `normalize()` and `repo.add()`.
+5. Postgres implementation of `EventRepository` (the next step up from SQLite for multi-worker deployments).
 
 
 # Development Notes

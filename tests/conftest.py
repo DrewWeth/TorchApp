@@ -1,4 +1,9 @@
-"""Shared pytest fixtures."""
+"""Shared pytest fixtures.
+
+The `repo` fixture is parameterized across both repository implementations so
+every test that depends on it (directly or via `client`) runs against both
+InMemory and SQLite. This is how we prove the `EventRepository` swap works.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +14,8 @@ from fastapi.testclient import TestClient
 
 from app.main import create_app
 from app.normalize import normalize
-from app.repository import InMemoryRepository
+from app.repository import EventRepository, InMemoryRepository
+from app.sqlite_repository import SqliteRepository
 
 
 SEED_RAW = [
@@ -62,12 +68,16 @@ SEED_RAW = [
 FIXED_NOW = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
 
-@pytest.fixture
-def repo() -> InMemoryRepository:
+@pytest.fixture(params=["memory", "sqlite"])
+def repo(request) -> EventRepository:
     seeded = [normalize(r, now=FIXED_NOW) for r in SEED_RAW]
-    return InMemoryRepository(seed=seeded)
+    if request.param == "memory":
+        return InMemoryRepository(seed=seeded)
+    sqlite_repo = SqliteRepository(db_path=":memory:", seed=seeded)
+    request.addfinalizer(sqlite_repo.close)
+    return sqlite_repo
 
 
 @pytest.fixture
-def client(repo: InMemoryRepository) -> TestClient:
+def client(repo: EventRepository) -> TestClient:
     return TestClient(create_app(repo))
