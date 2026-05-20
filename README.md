@@ -23,8 +23,10 @@ Swagger UI lives at http://127.0.0.1:8000/docs when the dev server is running. T
 
 ```bash
 docker build -t torch-events .
-docker run --rm -p 8000:8000 torch-events
+docker run --rm -p 8000:8000 -v "$(pwd):/db" torch-events
 ```
+
+The container defaults to the SQLite repository at `/db/events.db`. Bind-mounting the project root to `/db` makes `events.db` appear in your repo root and persist across container restarts. Drop the `-v` flag and the DB still works — it just lives in the container's writable layer and dies when the container is removed.
 
 ## Troubleshooting
 

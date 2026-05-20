@@ -84,6 +84,11 @@ class SqliteRepository:
         seed: Iterable[Event] = (),
     ) -> None:
         self._db_path = str(db_path)
+        # Ensure the parent dir exists for file-backed paths — sqlite3.connect
+        # would otherwise fail with "unable to open database file" if it didn't.
+        # `:memory:` and `file:...?mode=...` URIs are left alone.
+        if self._db_path not in (":memory:", "") and not self._db_path.startswith("file:"):
+            Path(self._db_path).expanduser().parent.mkdir(parents=True, exist_ok=True)
         # check_same_thread=False because asyncio.to_thread will dispatch calls
         # from the loop's worker pool; the asyncio.Lock + sqlite's own internal
         # serialisation keep things safe.
