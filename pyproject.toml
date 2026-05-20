@@ -1,0 +1,35 @@
+[project]
+name = "torch-events"
+version = "0.1.0"
+description = "Operational event service for the Torch.AI exercise"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "httpx>=0.27",
+    "taskipy>=1.13",
+]
+
+[tool.taskipy.tasks]
+# Tasks call the venv's python directly so they work whether or not the venv
+# is activated. (Activate the venv for shorter `task <name>` invocations.)
+setup = ".venv/bin/python -m pip install -e '.[dev]'"
+dev = ".venv/bin/python -m uvicorn app.main:app --reload"
+test = ".venv/bin/python -m pytest"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
