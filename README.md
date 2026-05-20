@@ -244,6 +244,7 @@ Running the command again yields:
 - **Security.** Out of scope here. In production: OAuth2/JWT at the gateway, scoped roles (analyst-read vs ingestor-write), audit logging on `POST`.
 - **Pagination.** Current impl uses offset/limit. Cursor pagination on `(timestamp, id)` is more correct at scale.
 - **Schema evolution.** Pydantic + lenient `type` field gets us forward-compatible. For bigger changes, version the API (`/v1/`) and dual-write during migration.
+- **Database migrations.** The SQLite schema currently lives as raw `CREATE TABLE IF NOT EXISTS` in `sqlite_repository.py`. Fine at this size, but it doesn't track schema versions, has no rollback story, and `IF NOT EXISTS` silently masks divergence between code and DB. The next step is a migration tool — **Alembic** is the natural fit (pairs cleanly with SQLAlchemy when we move to Postgres, also works against bare SQLite) and gives us versioned `up`/`down` revisions, a `schema_migrations` table, and `alembic upgrade head` as the deploy hook. For a lighter touch, **yoyo-migrations** is plain-SQL and dependency-light.
 
 ## What I would build next
 
