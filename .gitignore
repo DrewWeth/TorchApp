@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+
+# Test & coverage artefacts
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local databases (future SQLite swap)
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors / IDEs
+.idea/
+.vscode/
+*.swp
