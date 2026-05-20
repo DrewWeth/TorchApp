@@ -55,7 +55,7 @@ kill -9 <PID>
 ```bash
 curl http://127.0.0.1:8000/events | jq
 
-curl 'http://127.0.0.1:8000/events/search?type=movement&min_confidence=0.9'
+curl 'http://127.0.0.1:8000/events/search?type=movement&min_confidence=0.9' | jq
 
 curl http://127.0.0.1:8000/entities/unit-alpha/relationships | jq
 
