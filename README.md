@@ -1,12 +1,10 @@
 # Torch Events Service
 
-FastAPI service for the Torch.AI backend exercise. Ingests operational
-events, normalizes them, exposes search + relationship queries.
+FastAPI service for the Torch.AI backend exercise. Ingests operational events, normalizes them, exposes search + relationship queries.
 
 ## Scripts
 
-Workflows go through [taskipy](https://github.com/taskipy/taskipy) — the npm-scripts
-equivalent for Python. Tasks live in `pyproject.toml` under `[tool.taskipy.tasks]`.
+Workflows go through [taskipy](https://github.com/taskipy/taskipy) — the npm-scripts equivalent for Python. Tasks live in `pyproject.toml` under `[tool.taskipy.tasks]`.
 
 **First-time setup** (only thing you run by hand):
 
@@ -26,13 +24,9 @@ This creates `.venv/` and installs the project + dev deps including `taskipy`.
 
 Or activate the venv (`source .venv/bin/activate`) and drop the prefix: `task dev`.
 
-> **Windows note.** Tasks hardcode the POSIX `.venv/bin/python` path. On Windows,
-> either activate the venv first (`.venv\Scripts\activate`) and edit
-> `pyproject.toml` to drop the prefix, or run modules directly:
-> `.venv\Scripts\python -m pytest`.
+> **Windows note.** Tasks hardcode the POSIX `.venv/bin/python` path. On Windows, either activate the venv first (`.venv\Scripts\activate`) and edit `pyproject.toml` to drop the prefix, or run modules directly: `.venv\Scripts\python -m pytest`.
 
-Swagger UI lives at http://127.0.0.1:8000/docs when the dev server is running.
-The service seeds itself from `data/seed.json` on startup.
+Swagger UI lives at http://127.0.0.1:8000/docs when the dev server is running. The service seeds itself from `data/seed.json` on startup.
 
 ## Running in Docker
 
@@ -98,70 +92,33 @@ curl -X POST http://127.0.0.1:8000/events \
 
 ## Design
 
-**Layering.** `normalize.py` and `relationships.py` are pure functions. The
-routers are thin: parse → call repo + service → return. `repository.py`
-defines a `Protocol`, so the I/O layer is one swap away from SQLite or
-Postgres. This is also the seam a Kafka/NiFi consumer would plug into.
+**Layering.** `normalize.py` and `relationships.py` are pure functions. The routers are thin: parse → call repo + service → return. `repository.py` defines a `Protocol`, so the I/O layer is one swap away from SQLite or Postgres. This is also the seam a Kafka/NiFi consumer would plug into.
 
-**Storage.** Ships with `InMemoryRepository`. Process-local, so it does not
-survive restarts and is not safe across multiple uvicorn workers. The
-production swap is a `SqliteRepository` or `PostgresRepository` that
-implements the same `EventRepository` protocol; the rest of the code does
-not change.
+**Storage.** Ships with `InMemoryRepository`. Process-local, so it does not survive restarts and is not safe across multiple uvicorn workers. The production swap is a `SqliteRepository` or `PostgresRepository` that implements the same `EventRepository` protocol; the rest of the code does not change.
 
-**Normalization.** Validates with Pydantic (rejects naive timestamps and
-out-of-range confidence), strips whitespace on `related_entities`, stores
-both `entity` (preserved) and `normalized_entity` (stripped + lowercased)
-so queries are case-insensitive without rewriting source data. Stamps
-`ingested_at` at processing time.
+**Normalization.** Validates with Pydantic (rejects naive timestamps and out-of-range confidence), strips whitespace on `related_entities`, stores both `entity` (preserved) and `normalized_entity` (stripped + lowercased) so queries are case-insensitive without rewriting source data. Stamps `ingested_at` at processing time.
 
-**Unknown event types.** The spec uses five types but new sources will
-add more. `type` is a free string at the schema layer; unknown values log
-a warning rather than reject ingest, so a new source ships without code
-changes.
+**Unknown event types.** The spec uses five types but new sources will add more. `type` is a free string at the schema layer; unknown values log a warning rather than reject ingest, so a new source ships without code changes.
 
-**Relationships.** The endpoint splits the answer into three parts so the
-analyst sees structure: events where the entity is primary, events where
-they were mentioned by someone else, and co-occurring entities. The
-`temporal_neighbors` block adds events near in time (default ±30 min) with
-a `same_location` flag.
+**Relationships.** The endpoint splits the answer into three parts so the analyst sees structure: events where the entity is primary, events where they were mentioned by someone else, and co-occurring entities. The `temporal_neighbors` block adds events near in time (default ±30 min) with a `same_location` flag.
 
-**Concurrency.** `POST /events` does a read-modify-write. `InMemoryRepository`
-serialises writes with an `asyncio.Lock`. A SQL implementation would push
-the check into `INSERT ... ON CONFLICT`.
+**Concurrency.** `POST /events` does a read-modify-write. `InMemoryRepository` serialises writes with an `asyncio.Lock`. A SQL implementation would push the check into `INSERT ... ON CONFLICT`.
 
 ## Assumptions
 
-- The given dataset is the contract. New event types are accepted with a
-  log warning rather than schema migration.
-- Entity identity is "string equality after strip + lowercase". A real
-  system would resolve aliases via an entity-resolution service.
-- A single uvicorn process is sufficient for the exercise scale. Multi-
-  worker deployment requires a shared store (see Storage above).
-- `temporal_neighbors` uses absolute time delta; no per-event direction
-  (before/after). Easy to add.
+- The given dataset is the contract. New event types are accepted with a log warning rather than schema migration.
+- Entity identity is "string equality after strip + lowercase". A real system would resolve aliases via an entity-resolution service.
+- A single uvicorn process is sufficient for the exercise scale. Multi-worker deployment requires a shared store (see Storage above).
+- `temporal_neighbors` uses absolute time delta; no per-event direction (before/after). Easy to add.
 
 ## Production considerations & follow-ups
 
-- **Scale to millions/day.** Move to Postgres with `(entity)` and
-  `(location, timestamp)` indexes plus a join table for related_entities
-  so traversal does not scan all events. At higher scale, a graph DB
-  (Neo4j) for the relationship endpoint, or precomputed materialised
-  views.
-- **Kafka / NiFi ingest.** `normalize()` is framework-free and can be
-  called from a consumer worker that writes to the same repository.
-  Add idempotency on `id` to absorb at-least-once redelivery.
-- **Observability.** Structured logging is configured in `app/main.py`;
-  add request-ID middleware, `/metrics` for Prometheus, and OpenTelemetry
-  spans around the relationship query (the most expensive path).
-- **Security.** Out of scope here. In production: OAuth2/JWT at the
-  gateway, scoped roles (analyst-read vs ingestor-write), audit logging
-  on `POST`.
-- **Pagination.** Current impl uses offset/limit. Cursor pagination on
-  `(timestamp, id)` is more correct at scale.
-- **Schema evolution.** Pydantic + lenient `type` field gets us
-  forward-compatible. For bigger changes, version the API (`/v1/`) and
-  dual-write during migration.
+- **Scale to millions/day.** Move to Postgres with `(entity)` and `(location, timestamp)` indexes plus a join table for related_entities so traversal does not scan all events. At higher scale, a graph DB (Neo4j) for the relationship endpoint, or precomputed materialised views.
+- **Kafka / NiFi ingest.** `normalize()` is framework-free and can be called from a consumer worker that writes to the same repository. Add idempotency on `id` to absorb at-least-once redelivery.
+- **Observability.** Structured logging is configured in `app/main.py`; add request-ID middleware, `/metrics` for Prometheus, and OpenTelemetry spans around the relationship query (the most expensive path).
+- **Security.** Out of scope here. In production: OAuth2/JWT at the gateway, scoped roles (analyst-read vs ingestor-write), audit logging on `POST`.
+- **Pagination.** Current impl uses offset/limit. Cursor pagination on `(timestamp, id)` is more correct at scale.
+- **Schema evolution.** Pydantic + lenient `type` field gets us forward-compatible. For bigger changes, version the API (`/v1/`) and dual-write during migration.
 
 ## What I would build next
 
@@ -170,3 +127,31 @@ the check into `INSERT ... ON CONFLICT`.
 3. Request-ID logging middleware.
 4. Property-based tests on `normalize` with Hypothesis.
 5. A Kafka consumer worker reusing `normalize()` and `repo.add()`.
+
+
+# Development Notes
+
+## Race Condition on Read-Modify-Write
+
+To avoid race conditions on read-modify-write, the current InMemory implementation uses asyncio's single-process-lock to reject concurrent writes. To do this at scale with multiple workers, this single process lock should move down to the database using row-level lock in Postgres (eg `SELECT ... FOR UPDATE`). Catching `IntegrityError` at the handler level.
+
+## DB Tables and Indexes
+
+Generally, indexes for query optimizations should be driven by query patterns, using EXPLAIN to understand where indexes would be worth trade offs. 
+
+Below are intended implementation SQL tables.
+
+### Table `events`
+ 
+Primary store for normalized event log.
+
+ - Primary Unique key on ID.
+ - Index on `normalized_entity`
+ - Possible index on confidence if most queries are around a threshold, for example >= 0.7
+
+
+### Table `event_related_entities`
+
+for many-to-many between `event id` and `related_entity`. For queries: "give me all events mentioning entity x".
+
+- Index `(related_entity, event_id)` for "by entity first, then newest first".
