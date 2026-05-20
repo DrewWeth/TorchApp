@@ -17,6 +17,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 
 from app.normalize import normalize
 from app.repository import EventExists, EventRepository, InMemoryRepository
@@ -95,6 +96,53 @@ app = FastAPI(
 
 app.include_router(events.router)
 app.include_router(entities.router)
+
+
+_INDEX_HTML = """<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Torch Events Service</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 640px;
+      margin: 4rem auto;
+      padding: 0 1.5rem;
+      line-height: 1.55;
+    }
+    h1 { margin-bottom: 0.25rem; }
+    .tagline { color: #666; margin-top: 0; }
+    ul { padding-left: 1.25rem; }
+    li { margin: 0.4rem 0; }
+    code {
+      background: rgba(127,127,127,0.15);
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      font-size: 0.92em;
+    }
+  </style>
+</head>
+<body>
+  <h1>Torch Events Service</h1>
+  <p class="tagline">Operational event ingest, query, and relationship API.</p>
+  <h2>Explore the API</h2>
+  <ul>
+    <li><a href="/docs">Swagger UI</a> &mdash; interactive API explorer</li>
+    <li><a href="/redoc">ReDoc</a> &mdash; reference documentation</li>
+    <li><a href="/openapi.json"><code>openapi.json</code></a> &mdash; raw OpenAPI schema</li>
+    <li><a href="/healthz"><code>/healthz</code></a> &mdash; liveness probe</li>
+  </ul>
+</body>
+</html>
+"""
+
+
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+async def index() -> str:
+    return _INDEX_HTML
 
 
 @app.get("/healthz", tags=["meta"])
