@@ -7,9 +7,9 @@ Creates .venv and installs the project + dev dependencies. After this, all
 workflows go through run.py (cross-platform — same commands on macOS, Linux,
 and Windows, no venv activation required):
 
-    python run.py setup     # re-sync deps
-    python run.py dev       # run the API with reload
-    python run.py test      # run the test suite
+    python3 run.py setup    # re-sync deps
+    python3 run.py dev      # run the API with reload
+    python3 run.py test     # run the test suite
 """
 
 from __future__ import annotations
@@ -40,9 +40,9 @@ def main() -> int:
 
     print()
     print("Done. Next steps:")
-    print("  python run.py dev     # run uvicorn with reload")
-    print("  python run.py test    # run pytest")
-    print("  python run.py setup   # re-install dependencies")
+    print("  python3 run.py dev     # run uvicorn with reload")
+    print("  python3 run.py test    # run pytest")
+    print("  python3 run.py setup   # re-install dependencies")
     return 0
 
 

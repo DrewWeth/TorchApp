@@ -8,12 +8,14 @@ Two files, identical commands on macOS, Linux, and Windows. No venv activation r
 
 ```bash
 python3 bootstrap.py        # one-time: creates .venv and installs deps
-python run.py dev           # uvicorn with auto-reload on http://127.0.0.1:8000
-python run.py test          # pytest
-python run.py setup         # re-install deps (after editing pyproject.toml)
+python3 run.py dev          # uvicorn with auto-reload on http://127.0.0.1:8000
+python3 run.py test         # pytest
+python3 run.py setup        # re-install deps (after editing pyproject.toml)
 ```
 
-Extra arguments are forwarded, e.g. `python run.py test -k entity -v` or `python run.py dev --port 9000`.
+Extra arguments are forwarded, e.g. `python3 run.py test -k entity -v` or `python3 run.py dev --port 9000`.
+
+> `run.py` doesn't care which interpreter starts it — it locates the venv's python itself and dispatches. `python3` is just the portable spelling that works on macOS, Linux, and Windows.
 
 Swagger UI lives at http://127.0.0.1:8000/docs when the dev server is running. The service seeds itself from `data/seed.json` on startup.
 

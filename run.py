@@ -3,16 +3,16 @@
 macOS, Linux, and Windows without activating the venv.
 
 Usage:
-    python run.py setup       # re-install project + dev dependencies
-    python run.py dev         # uvicorn with --reload on :8000
-    python run.py test        # pytest
+    python3 run.py setup      # re-install project + dev dependencies
+    python3 run.py dev        # uvicorn with --reload on :8000
+    python3 run.py test       # pytest
 
 Each task resolves the venv's python (.venv/bin/python on POSIX,
 .venv\\Scripts\\python.exe on Windows) and dispatches `python -m <module>`.
 Extra args after the task name are forwarded, e.g.:
 
-    python run.py test -k entity -v
-    python run.py dev --port 9000
+    python3 run.py test -k entity -v
+    python3 run.py dev --port 9000
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ TASKS = {
 
 def main(argv: list[str]) -> int:
     if len(argv) < 2 or argv[1] not in TASKS:
-        print(f"usage: python run.py [{' | '.join(TASKS)}] [extra args...]")
+        print(f"usage: python3 run.py [{' | '.join(TASKS)}] [extra args...]")
         return 2
 
     if not PY.exists():
