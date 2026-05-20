@@ -4,27 +4,16 @@ FastAPI service for the Torch.AI backend exercise. Ingests operational events, n
 
 ## Scripts
 
-Workflows go through [taskipy](https://github.com/taskipy/taskipy) — the npm-scripts equivalent for Python. Tasks live in `pyproject.toml` under `[tool.taskipy.tasks]`.
-
-**First-time setup** (only thing you run by hand):
+Two files, identical commands on macOS, Linux, and Windows. No venv activation required.
 
 ```bash
-python3 bootstrap.py
+python3 bootstrap.py        # one-time: creates .venv and installs deps
+python run.py dev           # uvicorn with auto-reload on http://127.0.0.1:8000
+python run.py test          # pytest
+python run.py setup         # re-install deps (after editing pyproject.toml)
 ```
 
-This creates `.venv/` and installs the project + dev deps including `taskipy`.
-
-**After that**, all commands are tasks:
-
-```bash
-.venv/bin/task setup    # re-install deps (run after editing pyproject.toml)
-.venv/bin/task dev      # uvicorn with auto-reload on http://127.0.0.1:8000
-.venv/bin/task test     # pytest
-```
-
-Or activate the venv (`source .venv/bin/activate`) and drop the prefix: `task dev`.
-
-> **Windows note.** Tasks hardcode the POSIX `.venv/bin/python` path. On Windows, either activate the venv first (`.venv\Scripts\activate`) and edit `pyproject.toml` to drop the prefix, or run modules directly: `.venv\Scripts\python -m pytest`.
+Extra arguments are forwarded, e.g. `python run.py test -k entity -v` or `python run.py dev --port 9000`.
 
 Swagger UI lives at http://127.0.0.1:8000/docs when the dev server is running. The service seeds itself from `data/seed.json` on startup.
 
