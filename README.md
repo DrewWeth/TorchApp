@@ -53,20 +53,20 @@ kill -9 <PID>
 ### Example requests
 
 ```bash
-curl http://127.0.0.1:8000/events | jq
+curl -s http://127.0.0.1:8000/events | jq
 
-curl 'http://127.0.0.1:8000/events/search?type=movement&min_confidence=0.9' | jq
+curl -s 'http://127.0.0.1:8000/events/search?type=movement&min_confidence=0.9' | jq
 
-curl http://127.0.0.1:8000/entities/unit-alpha/relationships | jq
+curl -s http://127.0.0.1:8000/entities/unit-alpha/relationships | jq
 
-curl -X POST http://127.0.0.1:8000/events \
+curl -s -X POST http://127.0.0.1:8000/events \
   -H 'content-type: application/json' \
   -d '{
     "id":"evt-999","source":"sensor-feed","type":"movement",
     "timestamp":"2026-02-01T10:00:00Z","entity":"unit-delta",
     "location":"Region-C","confidence":0.5,
     "description":"new event","related_entities":[]
-  }'
+  }' | jq
 ```
 
 ### Relationship response shape
@@ -80,6 +80,138 @@ curl -X POST http://127.0.0.1:8000/events \
   "temporal_neighbors": [
     {"event_id":"evt-103","delta_seconds":720,"same_location":false}
   ]
+}
+```
+
+### Example Responses
+```json
+curl -s http://127.0.0.1:8000/events | jq '.[-1]'
+{
+  "id": "evt-101",
+  "source": "sensor-feed",
+  "type": "movement",
+  "timestamp": "2026-01-01T10:00:00Z",
+  "entity": "unit-alpha",
+  "location": "Region-A",
+  "confidence": 0.92,
+  "description": "Unusual movement pattern detected near checkpoint",
+  "related_entities": [
+    "unit-bravo"
+  ],
+  "ingested_at": "2026-05-20T20:39:42.043185Z",
+  "normalized_entity": "unit-alpha"
+}
+
+curl -s 'http://127.0.0.1:8000/events/search?type=movement&min_confidence=0.9' | jq
+[
+  {
+    "id": "evt-101",
+    "source": "sensor-feed",
+    "type": "movement",
+    "timestamp": "2026-01-01T10:00:00Z",
+    "entity": "unit-alpha",
+    "location": "Region-A",
+    "confidence": 0.92,
+    "description": "Unusual movement pattern detected near checkpoint",
+    "related_entities": [
+      "unit-bravo"
+    ],
+    "ingested_at": "2026-05-20T20:39:42.043185Z",
+    "normalized_entity": "unit-alpha"
+  }
+]
+
+curl -s http://127.0.0.1:8000/entities/unit-alpha/relationships | jq
+{
+  "entity": "unit-alpha",
+  "direct_events": [
+    {
+      "id": "evt-101",
+      "source": "sensor-feed",
+      "type": "movement",
+      "timestamp": "2026-01-01T10:00:00Z",
+      "entity": "unit-alpha",
+      "location": "Region-A",
+      "confidence": 0.92,
+      "description": "Unusual movement pattern detected near checkpoint",
+      "related_entities": [
+        "unit-bravo"
+      ],
+      "ingested_at": "2026-05-20T20:39:42.043185Z",
+      "normalized_entity": "unit-alpha"
+    },
+    {
+      "id": "evt-104",
+      "source": "alert-engine",
+      "type": "alert",
+      "timestamp": "2026-01-01T10:20:00Z",
+      "entity": "unit-alpha",
+      "location": "Region-A",
+      "confidence": 0.89,
+      "description": "Potential escalation based on movement and analyst observation",
+      "related_entities": [
+        "unit-bravo",
+        "unknown-signal-77"
+      ],
+      "ingested_at": "2026-05-20T20:39:42.043222Z",
+      "normalized_entity": "unit-alpha"
+    }
+  ],
+  "mentioned_in": [
+    {
+      "id": "evt-102",
+      "source": "analyst-note",
+      "type": "observation",
+      "timestamp": "2026-01-01T10:05:00Z",
+      "entity": "unit-bravo",
+      "location": "Region-A",
+      "confidence": 0.74,
+      "description": "Analyst observed possible coordination with unit-alpha",
+      "related_entities": [
+        "unit-alpha"
+      ],
+      "ingested_at": "2026-05-20T20:39:42.043204Z",
+      "normalized_entity": "unit-bravo"
+    }
+  ],
+  "co_occurring_entities": [
+    "unit-bravo",
+    "unknown-signal-77"
+  ],
+  "temporal_neighbors": [
+    {
+      "event_id": "evt-103",
+      "delta_seconds": 420,
+      "same_location": false
+    }
+  ]
+}
+
+curl -s -X POST http://127.0.0.1:8000/events \
+  -H 'content-type: application/json' \
+  -d '{
+    "id":"evt-999","source":"sensor-feed","type":"movement",
+    "timestamp":"2026-02-01T10:00:00Z","entity":"unit-delta",
+    "location":"Region-C","confidence":0.5,
+    "description":"new event","related_entities":[]
+  }' | jq
+{
+  "id": "evt-999",
+  "source": "sensor-feed",
+  "type": "movement",
+  "timestamp": "2026-02-01T10:00:00Z",
+  "entity": "unit-delta",
+  "location": "Region-C",
+  "confidence": 0.5,
+  "description": "new event",
+  "related_entities": [],
+  "ingested_at": "2026-05-20T20:46:58.496661Z",
+  "normalized_entity": "unit-delta"
+}
+
+Running the command again yields:
+{
+  "detail": "event 'evt-999' already exists"
 }
 ```
 
@@ -122,7 +254,7 @@ curl -X POST http://127.0.0.1:8000/events \
 5. Postgres implementation of `EventRepository` (the next step up from SQLite for multi-worker deployments).
 
 
-# Development Notes
+# Development Footnotes
 
 ## Race Condition on Read-Modify-Write
 
